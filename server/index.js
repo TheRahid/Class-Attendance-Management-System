@@ -2,10 +2,10 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
-import Teacher from "./server/models/TeacherSchema.js";
-import { connectDB } from "./server/config/db.js";
-import authRoutes from "./server/routes/authRoute.js";
-import teacherRoutes from "./server/routes/teachersRoute.js";
+import Teacher from "./models/TeacherSchema.js";
+import { connectDB } from "./config/db.js";
+import authRoutes from "./routes/authRoute.js";
+import teacherRoutes from "./routes/teachersRoute.js";
 
 const app = express();
 
