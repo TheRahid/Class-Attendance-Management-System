@@ -1,4 +1,4 @@
-import Teacher from "../models/Teacher.js";
+import Teacher from "../models/TeacherSchema.js";
 
 export async function listTeachers(_req, res) {
   const teachers = await Teacher.find({ role: "teacher" })
