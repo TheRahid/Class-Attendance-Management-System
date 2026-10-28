@@ -10,6 +10,7 @@ import {
   adminRouter as adminCourseRoutes,
   teacherRouter as teacherCourseRoutes
 } from './routes/courseRoute.js';
+import adminAttendanceRoutes from './routes/attendanceRoute.js';
 const app = express();
 
 app.use(cors({
@@ -20,11 +21,11 @@ app.use(express.json());
 app.get("/api", (_req, res) => {
   res.json({ message: "Attendance API is running" });
 });
+app.use('/api/auth', authRoutes);
+app.use('/api/admin/teachers', teacherRoutes);
 app.use('/api/admin/courses', adminCourseRoutes);
 app.use('/api/teacher/courses', teacherCourseRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/admin/teachers", teacherRoutes);
-
+app.use('/api/admin/attendance', adminAttendanceRoutes);
 async function createAdminIfMissing() {
   const name = process.env.ADMIN_NAME;
   const email = process.env.ADMIN_EMAIL?.toLowerCase().trim();

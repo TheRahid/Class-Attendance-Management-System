@@ -7,6 +7,11 @@ import {
   updateCourse
 } from '../controllers/courseController.js';
 import {
+  getCourseAttendance,
+  saveAttendance,
+  updateCourseStudents
+} from '../controllers/attendanceController.js';
+import {
   requireAdmin,
   requireAuth
 } from '../middleware/authMiddleware.js';
@@ -22,8 +27,7 @@ adminRouter.delete('/:courseId', deleteCourse);
 const teacherRouter = Router();
 
 teacherRouter.use(requireAuth);
-
-teacherRouter.get('/', (req, res, next) => {
+teacherRouter.use((req, res, next) => {
   if (req.account.role !== 'teacher') {
     return res.status(403).json({
       message: 'Teacher access is required.'
@@ -31,6 +35,11 @@ teacherRouter.get('/', (req, res, next) => {
   }
 
   next();
-}, listTeacherCourses);
+});
+
+teacherRouter.get('/', listTeacherCourses);
+teacherRouter.get('/:courseId/attendance', getCourseAttendance);
+teacherRouter.put('/:courseId/students', updateCourseStudents);
+teacherRouter.put('/:courseId/attendance', saveAttendance);
 
 export { adminRouter, teacherRouter };

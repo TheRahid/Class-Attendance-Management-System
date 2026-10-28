@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Course from '../models/CourseSchema.js';
 import Teacher from '../models/TeacherSchema.js';
-
+import Attendance from '../models/AttendanceSchema.js';
 const courseFields = [
   'code',
   'name',
@@ -125,6 +125,16 @@ export async function updateCourse(req, res) {
 
 export async function deleteCourse(req, res) {
   try {
+    const hasAttendance = await Attendance.exists({
+      course: req.params.courseId
+    });
+
+    if (hasAttendance) {
+      return res.status(409).json({
+        message: 'This course has attendance records and cannot be deleted.'
+      });
+    }
+
     const course = await Course.findByIdAndDelete(req.params.courseId);
 
     if (!course) {
@@ -137,7 +147,9 @@ export async function deleteCourse(req, res) {
       return res.status(400).json({ message: 'Invalid course ID.' });
     }
 
-    res.status(500).json({ message: 'Could not delete the course.' });
+    res.status(500).json({
+      message: 'Could not delete the course.'
+    });
   }
 }
 
