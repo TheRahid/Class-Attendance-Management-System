@@ -4,8 +4,10 @@ const studentRosterSchema = new mongoose.Schema({
     groupKey: { type: String, required: true, unique: true, index: true },
     department: { type: String, required: true, trim: true },
     batchNumber: { type: String, required: true, trim: true },
+
     // Kept temporarily so existing documents can be migrated without data loss.
     semester: { type: String, default: '', trim: true },
+
     section: { type: String, required: true, trim: true },
     students: [{
         studentId: { type: String, required: true, trim: true },

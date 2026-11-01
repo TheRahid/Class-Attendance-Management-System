@@ -1,41 +1,13 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const teacherSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    department: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-    role: {
-      type: String,
-      enum: ["admin", "teacher"],
-      required: true,
-    },
-    status: {
-      type: String,
-      enum: ["pending", "active", "suspended"],
-      default: "pending",
-    },
-    passwordHash: {
-      type: String,
-      required: true,
-      select: false,
-    },
-  },
-  { timestamps: true }
-);
+// This collection stores both teacher accounts and the preconfigured admin account.
+const teacherSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  department: { type: String, default: '', trim: true },
+  role: { type: String, enum: ['admin', 'teacher'], required: true, default: 'teacher' },
+  status: { type: String, enum: ['pending', 'active', 'suspended'], default: 'pending' },
+  passwordHash: { type: String, required: true, select: false }
+}, { timestamps: true });
 
-export default mongoose.model("Teacher", teacherSchema);
+export default mongoose.model('Teacher', teacherSchema);
