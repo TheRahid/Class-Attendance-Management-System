@@ -1,51 +1,51 @@
-
-import { useEffect, useState } from 'react';
-import { BookOpen } from 'lucide-react';
-import { fetchMyCourses } from '../api/courses.js';
+import { useEffect, useState } from "react";
+import { BookOpen } from "lucide-react";
+import { fetchMyCourses } from "../api/courses.js";
 
 export default function MyCourses() {
   const [courses, setCourses] = useState([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+
+
   useEffect(() => {
-    let cancelled = false;
+  let cancelled = false;
 
-    async function loadCourses() {
-      try {
-        const result = await fetchMyCourses();
+  async function fetchCourses() {
+    try {
+      const result = await fetchMyCourses();
 
-        if (cancelled) return;
-
+      if (!cancelled) {
         setCourses(result.courses || []);
-        setError('');
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError.message || 'Failed to load courses.');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        setError("");
+      }
+    } catch (requestError) {
+      if (!cancelled) {
+        setError(requestError.message);
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
       }
     }
+  }
 
-    loadCourses();
+  fetchCourses();
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   return (
     <section>
       <div className="mb-5">
-        <h2 className="text-lg font-bold text-slate-900">My Courses</h2>
+        {/* <h2 className="text-lg font-bold text-slate-900">My Courses</h2> */}
         <p className="mt-1 text-sm text-slate-500">
           Courses assigned to your teacher account.
         </p>
       </div>
-
       {error && (
         <p
           role="alert"
@@ -54,16 +54,15 @@ export default function MyCourses() {
           {error}
         </p>
       )}
-
       {loading ? (
         <p className="rounded-xl border border-slate-200 p-8 text-center text-sm text-slate-500">
           Loading courses…
         </p>
       ) : courses.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {courses.map(course => (
+          {courses.map((course) => (
             <article
-              key={course._id}
+              key={`${course._id}-${course.assignment?._id}`}
               className="rounded-xl border border-slate-200 bg-white p-5"
             >
               <div className="mb-4 flex items-start justify-between">
@@ -74,22 +73,20 @@ export default function MyCourses() {
                   {course.code}
                 </span>
               </div>
-
               <h3 className="font-bold text-slate-900">{course.name}</h3>
-
               <p className="mt-1 text-sm text-slate-500">
-                {course.department} · {course.semester}
+                {course.department} ·{" "}
+                {course.assignment?.semester || "No semester"} ·{" "}
+                {course.assignment?.section
+                  ? `Section ${course.assignment.section}`
+                  : "No section"}
+                {course.assignment?.classTime
+                  ? ` · ${course.assignment.classTime}`
+                  : ""}
               </p>
-
               <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600">
-                {[course.classTime, course.room]
-                  .filter(Boolean)
-                  .join(' · ') || 'Schedule not set'}
+                Attendance can be recorded anytime.
               </div>
-
-              <p className="mt-3 text-xs text-slate-500">
-                {course.students?.length || 0} enrolled
-              </p>
             </article>
           ))}
         </div>
@@ -104,3 +101,4 @@ export default function MyCourses() {
     </section>
   );
 }
+ 

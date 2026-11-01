@@ -1,181 +1,128 @@
-
-import { useCallback, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { BookOpen, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { fetchTeachers } from '../api/auth.js';
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useLocation, useNavigate } from "react-router-dom";
+import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   createCourse,
   deleteCourse,
   fetchAdminCourses,
-  updateCourse
-} from '../api/courses.js';
+  updateCourse,
+} from "../api/courses.js";
 
-const emptyCourse = {
-  code: '',
-  name: '',
-  department: '',
-  semester: '',
-  classTime: '',
-  room: '',
-  teacher: ''
-};
-
+const emptyCourse = { code: "", name: "", department: "" };
 const inputClass =
-  'mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100';
+  "mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100";
 
 export default function CourseManagement() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [courses, setCourses] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
-
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors }
+    formState: { errors },
   } = useForm({ defaultValues: emptyCourse });
 
-  // Refresh data after creating, editing, or deleting a course.
-  // Do not set loading synchronously here; this function is also
-  // called from event handlers.
-  const load = useCallback(async () => {
-    try {
-      const [courseData, teacherData] = await Promise.all([
-        fetchAdminCourses(),
-        fetchTeachers()
-      ]);
+const load = useCallback(async () => {
+  try {
+    const result = await fetchAdminCourses();
+    setCourses(result.courses || []);
+    setError("");
+  } catch (requestError) {
+    setError(requestError.message);
+  }
+}, []);
 
-      setCourses(courseData.courses || []);
-      setTeachers(
-        (teacherData.teachers || []).filter(
-          teacher => teacher.status === 'active'
-        )
-      );
-      setError('');
-    } catch (requestError) {
-      setError(requestError.message || 'Failed to load course data.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Load initial data asynchronously and avoid state updates
-  // if the component unmounts before the requests finish.
   useEffect(() => {
-    let cancelled = false;
+  let cancelled = false;
 
-    async function initialize() {
-      try {
-        const [courseData, teacherData] = await Promise.all([
-          fetchAdminCourses(),
-          fetchTeachers()
-        ]);
+  async function fetchCourses() {
+    try {
+      const result = await fetchAdminCourses();
 
-        if (cancelled) return;
-
-        setCourses(courseData.courses || []);
-        setTeachers(
-          (teacherData.teachers || []).filter(
-            teacher => teacher.status === 'active'
-          )
-        );
-        setError('');
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError.message || 'Failed to load course data.');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (!cancelled) {
+        setCourses(result.courses || []);
+        setError("");
+      }
+    } catch (requestError) {
+      if (!cancelled) {
+        setError(requestError.message);
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
       }
     }
+  }
 
-    initialize();
+  fetchCourses();
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   function startCreate() {
     setEditing(null);
     reset(emptyCourse);
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
     setFormOpen(true);
   }
 
   function startEdit(course) {
     setEditing(course);
-
     reset({
-      code: course.code || '',
-      name: course.name || '',
-      department: course.department || '',
-      semester: course.semester || '',
-      classTime: course.classTime || '',
-      room: course.room || '',
-      teacher: course.teacher?._id || ''
+      code: course.code || "",
+      name: course.name || "",
+      department: course.department || "",
     });
-
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
     setFormOpen(true);
   }
 
   async function onSubmit(values) {
     setSaving(true);
-    setError('');
-    setNotice('');
-
-    const payload = {
-      ...values,
-      code: values.code.toUpperCase()
-    };
-
+    setError("");
+    setNotice("");
     try {
-      if (editing) {
-        await updateCourse(editing._id, payload);
-      } else {
-        await createCourse(payload);
-      }
-
+      const payload = { ...values, code: values.code.toUpperCase() };
+      if (editing) await updateCourse(editing._id, payload);
+      else await createCourse(payload);
       setNotice(
-        editing ? 'Course updated.' : 'Course created and assigned.'
+        editing
+          ? "Course details updated."
+          : "Course created. Add its teaching assignments separately.",
       );
       setFormOpen(false);
       setEditing(null);
       reset(emptyCourse);
       await load();
     } catch (requestError) {
-      setError(requestError.message || 'Failed to save the course.');
+      setError(requestError.message);
     } finally {
       setSaving(false);
     }
   }
 
   async function removeCourse(course) {
-    const confirmed = window.confirm(
-      `Delete ${course.code} — ${course.name}?`
-    );
-
-    if (!confirmed) return;
-
-    setError('');
-    setNotice('');
-
+    if (!window.confirm(`Delete ${course.code} — ${course.name}?`)) return;
+    setError("");
+    setNotice("");
     try {
       await deleteCourse(course._id);
       setNotice(`${course.code} deleted.`);
       await load();
     } catch (requestError) {
-      setError(requestError.message || 'Failed to delete the course.');
+      setError(requestError.message);
     }
   }
 
@@ -183,29 +130,19 @@ export default function CourseManagement() {
     <section>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Courses</h2>
+          {/* <h2 className="text-lg font-bold text-slate-900">Courses</h2> */}
           <p className="mt-1 text-sm text-slate-500">
-            Create courses and assign them to approved teachers.
+            Create and maintain course details here. Manage teachers and
+            sections separately.
           </p>
         </div>
-
         <button
-          type="button"
           onClick={startCreate}
-          disabled={!teachers.length || loading}
-          className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-[#0297de] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#027fb9]"
         >
-          <Plus size={16} />
-          Add course
+          <Plus size={16} /> Add course
         </button>
       </div>
-
-      {!teachers.length && !loading && (
-        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-          Approve at least one teacher before assigning a course.
-        </p>
-      )}
-
       {error && (
         <p
           role="alert"
@@ -214,7 +151,6 @@ export default function CourseManagement() {
           {error}
         </p>
       )}
-
       {notice && (
         <p
           role="status"
@@ -229,32 +165,25 @@ export default function CourseManagement() {
           onSubmit={handleSubmit(onSubmit)}
           className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
         >
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4">
             <h3 className="font-semibold text-slate-900">
-              {editing ? 'Edit course' : 'New course'}
+              {editing ? "Edit course details" : "Create a course"}
             </h3>
-
-            <button
-              type="button"
-              onClick={() => setFormOpen(false)}
-              aria-label="Close form"
-              className="rounded-md p-1 text-slate-500 hover:bg-white"
-            >
-              <X size={18} />
-            </button>
+            <p className="mt-1 text-xs text-slate-500">
+              Teacher, semester, section, and student list are configured from
+              Teaching Assignments.
+            </p>
           </div>
-
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="text-xs font-semibold text-slate-600">
               Course code
               <input
-                {...register('code', {
-                  required: 'Enter a course code.',
+                {...register("code", {
+                  required: "Enter a course code.",
                   pattern: {
                     value: /^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$/,
-                    message:
-                      'Use 2–12 letters, numbers, spaces, or hyphens.'
-                  }
+                    message: "Use 2–12 letters, numbers, spaces, or hyphens.",
+                  },
                 })}
                 className={inputClass}
                 placeholder="CSE 101"
@@ -265,16 +194,15 @@ export default function CourseManagement() {
                 </span>
               )}
             </label>
-
             <label className="text-xs font-semibold text-slate-600">
               Course name
               <input
-                {...register('name', {
-                  required: 'Enter a course name.',
+                {...register("name", {
+                  required: "Enter a course name.",
                   pattern: {
                     value: /^[A-Za-z0-9][A-Za-z0-9 ,.'&()/-]{1,79}$/,
-                    message: 'Enter a valid name (2–80 characters).'
-                  }
+                    message: "Enter a valid name (2–80 characters).",
+                  },
                 })}
                 className={inputClass}
                 placeholder="Introduction to Programming"
@@ -285,16 +213,15 @@ export default function CourseManagement() {
                 </span>
               )}
             </label>
-
             <label className="text-xs font-semibold text-slate-600">
               Department
               <input
-                {...register('department', {
-                  required: 'Enter a department.',
+                {...register("department", {
+                  required: "Enter a department.",
                   pattern: {
                     value: /^[A-Za-z][A-Za-z0-9 &/-]{1,49}$/,
-                    message: 'Enter a valid department name.'
-                  }
+                    message: "Enter a valid department name.",
+                  },
                 })}
                 className={inputClass}
                 placeholder="Computer Science"
@@ -305,165 +232,92 @@ export default function CourseManagement() {
                 </span>
               )}
             </label>
-
-            <label className="text-xs font-semibold text-slate-600">
-              Semester
-              <input
-                {...register('semester', {
-                  required: 'Enter a semester.',
-                  pattern: {
-                    value: /^[A-Za-z0-9][A-Za-z0-9 .&/-]{1,39}$/,
-                    message: 'Enter a valid semester.'
-                  }
-                })}
-                className={inputClass}
-                placeholder="Fall 2026"
-              />
-              {errors.semester && (
-                <span className="mt-1 block font-normal text-rose-600">
-                  {errors.semester.message}
-                </span>
-              )}
-            </label>
-
-            <label className="text-xs font-semibold text-slate-600">
-              Class time
-              <input
-                {...register('classTime', {
-                  maxLength: {
-                    value: 60,
-                    message: 'Keep the class time under 60 characters.'
-                  }
-                })}
-                className={inputClass}
-                placeholder="Sun, Tue · 11:00 AM"
-              />
-              {errors.classTime && (
-                <span className="mt-1 block font-normal text-rose-600">
-                  {errors.classTime.message}
-                </span>
-              )}
-            </label>
-
-            <label className="text-xs font-semibold text-slate-600">
-              Room
-              <input
-                {...register('room', {
-                  maxLength: {
-                    value: 30,
-                    message: 'Keep the room under 30 characters.'
-                  }
-                })}
-                className={inputClass}
-                placeholder="Room 204"
-              />
-              {errors.room && (
-                <span className="mt-1 block font-normal text-rose-600">
-                  {errors.room.message}
-                </span>
-              )}
-            </label>
-
-            <label className="text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-3">
-              Assign teacher
-              <select
-                {...register('teacher', {
-                  required: 'Choose a teacher.'
-                })}
-                className={inputClass}
-              >
-                <option value="">Select an approved teacher</option>
-                {teachers.map(teacher => (
-                  <option key={teacher._id} value={teacher._id}>
-                    {teacher.name} · {teacher.department || 'No department'}
-                  </option>
-                ))}
-              </select>
-              {errors.teacher && (
-                <span className="mt-1 block font-normal text-rose-600">
-                  {errors.teacher.message}
-                </span>
-              )}
-            </label>
           </div>
-
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <button
               type="button"
               onClick={() => setFormOpen(false)}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              className="rounded-lg border border-[#0297de] bg-white px-4 py-2.5 text-sm font-medium text-[#0297de] hover:bg-sky-50"
             >
               Cancel
             </button>
-
             <button
-              type="submit"
               disabled={saving}
-              className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+              className="rounded-lg bg-[#0297de] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#027fb9] disabled:opacity-60"
             >
-              {saving
-                ? 'Saving…'
-                : editing
-                  ? 'Save changes'
-                  : 'Create course'}
+              {saving ? "Saving…" : editing ? "Save course" : "Create course"}
             </button>
           </div>
         </form>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 xl:block">
         <table className="w-full min-w-190 border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Course</th>
               <th className="px-4 py-3">Department</th>
-              <th className="px-4 py-3">Semester</th>
-              <th className="px-4 py-3">Teacher</th>
-              <th className="px-4 py-3">Schedule</th>
+              <th className="px-4 py-3">Teaching assignments</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-
           <tbody className="divide-y divide-slate-100">
-            {courses.map(course => (
+            {courses.map((course) => (
               <tr key={course._id}>
                 <td className="px-4 py-3">
                   <div className="font-semibold text-slate-800">
                     {course.name}
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {course.code}
-                  </div>
+                  <div className="text-xs text-slate-500">{course.code}</div>
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {course.department}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {course.semester}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {course.teacher?.name || 'Unassigned'}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {[course.classTime, course.room]
-                    .filter(Boolean)
-                    .join(' · ') || '—'}
+                  {course.assignments?.length ? (
+                    <div className="space-y-1">
+                      {course.assignments.map((assignment) => (
+                        <div key={assignment._id || assignment.teacher?._id}>
+                          {assignment.teacher?.name || "Teacher"} ·{" "}
+                          {assignment.semester || "No semester"} ·{" "}
+                          {assignment.section
+                            ? `Section ${assignment.section}`
+                            : "No section"}
+                          {assignment.classTime
+                            ? ` · ${assignment.classTime}`
+                            : ""}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">None yet</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     <button
-                      type="button"
+                      onClick={() =>
+                        navigate(`/admin/assignments?courseId=${course._id}`, {
+                          state: {
+                            from: `${location.pathname}${location.search}`,
+                          },
+                        })
+                      }
+                      className="rounded-md border border-[#0297de] px-3 py-2 text-xs font-semibold text-[#0297de] hover:bg-sky-50"
+                    >
+                      Manage assignments
+                    </button>
+                    <button
                       onClick={() => startEdit(course)}
                       aria-label={`Edit ${course.code}`}
-                      className="rounded-md border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                      className="rounded-md border border-[#0297de] p-2 text-[#0297de] hover:bg-sky-50"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
-                      type="button"
                       onClick={() => removeCourse(course)}
                       aria-label={`Delete ${course.code}`}
-                      className="rounded-md border border-slate-200 p-2 text-rose-600 hover:bg-rose-50"
+                      className="rounded-md border border-[#0297de] p-2 text-[#0297de] hover:bg-sky-50"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -473,13 +327,11 @@ export default function CourseManagement() {
             ))}
           </tbody>
         </table>
-
         {loading && (
           <p className="p-8 text-center text-sm text-slate-500">
             Loading courses…
           </p>
         )}
-
         {!loading && courses.length === 0 && (
           <div className="p-10 text-center">
             <BookOpen className="mx-auto mb-2 text-slate-300" size={24} />
@@ -489,6 +341,96 @@ export default function CourseManagement() {
           </div>
         )}
       </div>
+
+      <div className="space-y-3 xl:hidden">
+        {loading && (
+          <p className="rounded-xl border border-slate-200 p-6 text-center text-sm text-slate-500">
+            Loading courses…
+          </p>
+        )}
+        {!loading && courses.length === 0 && (
+          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
+            <BookOpen className="mx-auto mb-2 text-slate-300" size={24} />
+            <p className="text-sm text-slate-500">
+              No courses yet. Add a course to get started.
+            </p>
+          </div>
+        )}
+        {courses.map((course) => (
+          <article
+            key={course._id}
+            className="rounded-xl border border-slate-200 bg-white p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="wrap-break-word text-sm font-semibold text-slate-900">
+                  {course.name}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">{course.code}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                {course.department}
+              </span>
+            </div>
+            {course.assignments?.length ? (
+              <details className="mt-3 text-xs text-slate-600">
+                <summary className="cursor-pointer font-medium text-slate-700">
+                  {course.assignments.length} teaching assignment
+                  {course.assignments.length === 1 ? "" : "s"}
+                </summary>
+                <ul className="mt-2 space-y-1 border-l-2 border-slate-100 pl-3">
+                  {course.assignments.map((assignment) => (
+                    <li
+                      key={assignment._id || assignment.teacher?._id}
+                      className="wrap-break-word"
+                    >
+                      {assignment.teacher?.name || "Teacher"} ·{" "}
+                      {assignment.semester || "No semester"} ·{" "}
+                      {assignment.section
+                        ? `Section ${assignment.section}`
+                        : "No section"}
+                      {assignment.classTime ? ` · ${assignment.classTime}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : (
+              <p className="mt-3 text-xs text-slate-400">
+                No teaching assignments yet.
+              </p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={() =>
+                  navigate(`/admin/assignments?courseId=${course._id}`, {
+                    state: {
+                      from: `${location.pathname}${location.search}`,
+                    },
+                  })
+                }
+                className="flex-1 rounded-md border border-[#0297de] px-3 py-2 text-xs font-semibold text-[#0297de] hover:bg-sky-50"
+              >
+                Manage assignments
+              </button>
+              <button
+                onClick={() => startEdit(course)}
+                aria-label={`Edit ${course.code}`}
+                className="rounded-md border border-[#0297de] p-2 text-[#0297de] hover:bg-sky-50"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => removeCourse(course)}
+                aria-label={`Delete ${course.code}`}
+                className="rounded-md border border-[#0297de] p-2 text-[#0297de] hover:bg-sky-50"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
+  
